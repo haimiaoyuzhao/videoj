@@ -5,7 +5,7 @@ import sys
 from video_window import Ui_VideoWindow
 from imgbox import decorate_qwidget_with_imgbox
 from my_qwidget import decorate_qwidget_with_input_dev
-from player import VideoPlayer, AudioPlayer
+from player import Player
 
 
 VIDEO_PALYING = 0
@@ -21,8 +21,7 @@ class MyVideoWindow(Ui_VideoWindow):
         self.widget = decorate_qwidget_with_imgbox(self.widget)
         print(video_path)
 
-        self.video_player = VideoPlayer(self.window, video_path, self)
-        self.audio_player = AudioPlayer(video_path)
+        self.video_player = Player(self.window, video_path, self)
         self.state = VIDEO_PALYING  # 设置当前播放器处于的状态，播放还是暂停
         self.tot_secs = self.video_player.get_tot_secs()
         self.cur_sec = 0
@@ -49,12 +48,10 @@ class MyVideoWindow(Ui_VideoWindow):
     def play(self):
         self.state = VIDEO_PALYING
         self.video_player.play()
-        # self.audio_player.play()
 
     def pause(self):
         self.state = VIDEO_PAUSING
         self.video_player.pause()
-        # self.audio_player.pause()
 
     def change_state(self):
         if self.state == VIDEO_PALYING:
@@ -71,7 +68,6 @@ class MyVideoWindow(Ui_VideoWindow):
 
     def _quit(self):
         print("close")
-        self.audio_player.quit()
         self.video_player.quit()
         self.window.close()
 

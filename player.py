@@ -1,46 +1,23 @@
-import numpy as np
-from threading import Thread
 from PyQt5.QtCore import QTimer
-from abc import abstractmethod
 from time import time
 
-from moviepy.editor import VideoFileClip
 from pyaudio import PyAudio
 
-from reader import VideoReader
+from reader import VideoReader, AudioReader
 
 
-class BasePlayer:
-    def __init__(self):
-        ...
-
-    @abstractmethod
-    def play(self):
-        ...
-
-    @abstractmethod
-    def pause(self):
-        ...
-
-    @abstractmethod
-    def quit(self):
-        ...
-
-    @abstractmethod
-    def jump_to(self, sec):
-        ...
-
-    @abstractmethod
-    def mult_speed_by(self, times):
-        ...
-
-
-class VideoPlayer(BasePlayer):
+class Player:
     def __init__(self, window, video_path, father):
-        super(VideoPlayer, self).__init__()
         self.father = father
         self.window = window
         self.video_reader = VideoReader(video_path)
+
+        self.audio_reader = AudioReader(video_path, self.video_reader.tot_frame)
+        p = PyAudio()  # 初始化PyAudio模块
+        self.stream = p.open(format=p.get_format_from_width(self.audio_reader.nbytes),
+                             channels=self.audio_reader.nchannels,
+                             rate=self.audio_reader.fps, output=True)
+
         self.timer = QTimer(self.window)
         self.timer.timeout.connect(self._play_frame)  # 到达设定的时间后，执行槽函数代码
 
@@ -59,10 +36,9 @@ class VideoPlayer(BasePlayer):
             delta = cur_time - self.cur_time if self.cur_time is not None else 0
             self.cur_time = cur_time
             nex_fid = self.cur_frame_id + int(delta*self.fps)
-            self.cur_frame_id, frame = self.video_reader.get_frame(nex_fid)
+            self._play_video(nex_fid)
+            self._play_audio(nex_fid)
             self.cur_frame_id = nex_fid
-            if self.cur_frame_id >= 0:
-                self.father.display(self.cur_frame_id//self.ini_fps, frame)
             from time import sleep
             # print("play end")
 
@@ -92,66 +68,17 @@ class VideoPlayer(BasePlayer):
     def get_tot_secs(self):
         return self.tot_secs
 
+    def _play_video(self, fid):
+        cur_frame_id, frame = self.video_reader.get_frame(fid)
+        if cur_frame_id >= 0:
+            self.father.display(cur_frame_id // self.ini_fps, frame)
 
-class AudioPlayer(BasePlayer):
-    def __init__(self, path, maxsize=200):
-        super(AudioPlayer, self).__init__()
-        video = VideoFileClip(path)
-        self.audio = video.audio
+    def _play_audio(self, fid):
+        cur_frame_id, data = self.audio_reader.get_frame(fid)
+        self.stream.write(data)
 
-        self.maxsize = maxsize
-        self.cur_frame_id = 0
-        self.state = 0  # 0代表stop 1 代表start
-        self.fps = 4410
-        p = PyAudio()  # 初始化PyAudio模块
-        self.stream = p.open(format=p.get_format_from_width(self.audio.reader.nbytes),
-                             channels=self.audio.nchannels,
-                             rate=self.fps, output=True)
-        self.thread = Thread(target=self._play_frame)
-        self.thread.setDaemon(True)
-        self.thread.start()
 
-    def play(self):
-        self.state = 1
-        if self.stream.is_stopped():
-            self.stream.start_stream()
 
-    def pause(self):
-        self.state = 0
-        if not self.stream.is_stopped():
-            self.stream.stop_stream()
-
-    def quit(self):
-        self.pause()
-        self.stream.close()
-
-    def _play_frame(self):
-        audio = self.audio
-        nbytes = audio.reader.nbytes
-        fps = self.fps
-        totalsize = int(fps * audio.duration)
-        chunksize = 1000
-        nchunks = totalsize // chunksize + 1
-
-        pospos = np.linspace(0, totalsize, nchunks + 1, endpoint=True, dtype=int)
-        while self.cur_frame_id < nchunks:
-            if self.state == 0:
-                continue
-            # time_st = time.time()
-            i = self.cur_frame_id
-            tt = (1.0 / fps) * np.arange(pospos[i], pospos[i + 1])
-            chunk = audio.to_soundarray(tt, nbytes=nbytes, quantize=True,
-                                      fps=fps, buffersize=chunksize)
-            data = chunk.tobytes()
-            self.stream.write(data)
-            self.cur_frame_id += 1
-            # print(time.time() - time_st)
-
-    def jump_to(self, sec):
-        pass
-
-    def mult_speed_by(self, times):
-        pass
 
 
 if __name__ == "__main__":
