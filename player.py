@@ -30,22 +30,19 @@ class Player:
         self.tot_secs = self.tot_frame // self.ini_fps
 
     def _play_frame(self):
-        if self.video_reader is not None:
-            # print("play start")
-            cur_time = time()
-            delta = cur_time - self.cur_time if self.cur_time is not None else 0
-            self.cur_time = cur_time
-            nex_fid = self.cur_frame_id + int(delta*self.fps)
-            self._play_video(nex_fid)
-            self._play_audio(nex_fid)
-            self.cur_frame_id = nex_fid
-            from time import sleep
-            # print("play end")
+        cur_time = time()
+        delta = cur_time - self.cur_time if self.cur_time is not None else 0
+        print("delta: ", delta)
+        self.cur_time = cur_time
+        nex_fid = self.cur_frame_id + int(delta*self.fps)
+        # self._play_video(nex_fid)
+        time_st = time()
+        self._play_audio(nex_fid)
+        print("audio read time: ", time() - time_st)
+        self.cur_frame_id = nex_fid
 
     def play(self):
-        self.timer.start(int(1000 / self.fps))
-        # timer = Timer(1 / self.fps, self._play_frame)
-        # timer.start()
+        self.timer.start(int(600 / self.fps))
 
     def pause(self):
         self.timer.stop()
