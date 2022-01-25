@@ -76,12 +76,3 @@ class Player:
     def _play_audio(self, fid):
         cur_frame_id, data = self.audio_reader.get_frame(fid)
         self.stream.write(data)
-
-
-
-
-
-if __name__ == "__main__":
-    audio_player = AudioPlayer(
-        r'D:\HONOR Share\Backup\Videos\myphone_1E91F5A4832C\Download\xvideos.com_d0616f18c6d1d9b1d3e1c6332bd80289.mp4')
-    audio_player.play()

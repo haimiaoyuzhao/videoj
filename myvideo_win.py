@@ -16,6 +16,7 @@ class MyVideoWindow(Ui_VideoWindow):
     def __init__(self, window: QMainWindow, video_path: str):
         super().__init__()
         self.window = window
+        self.window.closeEvent = self.closeEvent
         self.setupUi(self.window)
         self.centralwidget = decorate_qwidget_with_input_dev(self.centralwidget, self)
         self.widget = decorate_qwidget_with_imgbox(self.widget)
@@ -30,6 +31,9 @@ class MyVideoWindow(Ui_VideoWindow):
         # 设置速率
         self.speed_cbox.currentIndexChanged.connect(self._speed_changed)
         self.horizontalScrollBar.valueChanged.connect(self._jump)
+
+    def closeEvent(self, event):
+        self._quit()
 
     def start_play(self):
         sleep(1)
