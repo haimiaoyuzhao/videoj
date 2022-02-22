@@ -1,8 +1,6 @@
 from typing import Tuple
-from time import sleep
-import sys
+from time import time
 from queue import Queue
-from threading import Thread
 import numpy as np
 import cv2
 from moviepy.editor import VideoFileClip
@@ -19,9 +17,11 @@ class BaseReader:
         self.fps = None
 
     def get_frame(self, frame_id=None) -> Tuple[int, np.ndarray]:
+
         if frame_id is not None:
             self._jump(frame_id)
         ret, cur_frame_id, data = self._read_one_frame()
+
         return cur_frame_id, data
 
     def jump2(self, sec) -> bool:
@@ -92,15 +92,15 @@ class VideoReader(BaseReader):
 
 
 class AudioReader(BaseReader):
-    def __init__(self, path, vframes, maxsize=1000):
+    def __init__(self, path, vframes, vfps, maxsize=1000):
         super().__init__(path, maxsize)
         # 视频的信息
         video = VideoFileClip(path)
         self.audio = video.audio
-        self.fps = self.audio.fps
+        self.fps = vfps
         self.nbytes = self.audio.reader.nbytes
 
-        totalsize = int(self.fps * self.audio.duration)
+        totalsize = int(self.audio.fps * self.audio.duration)
         nchunks = vframes
         self.chunksize = totalsize // nchunks
         self.nchannels = self.audio.nchannels
@@ -113,9 +113,37 @@ class AudioReader(BaseReader):
 
     def _read_one_frame(self):
         i = self.cur_frame_id
-        tt = (1.0 / self.fps) * np.arange(self.pospos[i], self.pospos[i + 1])
+        tt = (1.0 / self.audio.fps) * np.arange(self.pospos[i], self.pospos[i + 1])
         chunk = self.audio.to_soundarray(tt, nbytes=self.nbytes, quantize=True,
-                                    fps=self.fps, buffersize=self.chunksize)
+                                    fps=self.audio.fps, buffersize=self.chunksize)
         data = chunk.tobytes()
         self.cur_frame_id += 1
         return 1, self.cur_frame_id-1, data
+
+
+if __name__ == "__main__":
+
+    from pyaudio import PyAudio
+    video_path = r"D:\HONOR Share\Backup\Videos\myphone_1E91F5A4832C\Download\xvideos.com_d0616f18c6d1d9b1d3e1c6332bd80289.mp4"
+    audio_reader = AudioReader(video_path, 35007)
+    p = PyAudio()  # 初始化PyAudio模块
+    stream = p.open(format=p.get_format_from_width(audio_reader.nbytes),
+                     channels=audio_reader.nchannels,
+                     rate=audio_reader.fps, output=True)
+
+    for i in range(1000):
+        cur_time = time()
+        delta = cur_time - self.cur_time if self.cur_time is not None else 0
+        print("delta: ", delta)
+        self.cur_time = cur_time
+        nex_fid = self.cur_frame_id + int(delta * self.fps)
+        # self._play_video(nex_fid)
+        time_st = time()
+        self._play_audio(nex_fid)
+        print("audio read time: ", time() - time_st)
+        self.cur_frame_id = nex_fid
+
+        time_st = time()
+        cur_frame_id, data = audio_reader.get_frame(i)
+        stream.write(data)
+        print(time() - time_st)
